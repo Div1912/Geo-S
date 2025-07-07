@@ -1,0 +1,126 @@
+"use client"
+
+import type React from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { apiClient } from "@/lib/api-client"
+
+interface User {
+  id: string
+  name: string
+  email: string
+  organization: string
+  role: string
+  phone?: string
+  location?: string
+}
+
+interface AuthContextType {
+  user: User | null
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<void>
+  register: (userData: any) => Promise<void>
+  logout: () => void
+  isAuthenticated: boolean
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = apiClient.getToken()
+    if (token) {
+      // Try to get user info from localStorage or verify token
+      const savedUser = localStorage.getItem("user")
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser))
+        } catch (error) {
+          console.error("Error parsing saved user:", error)
+          apiClient.clearToken()
+        }
+      }
+    }
+    setIsLoading(false)
+  }, [])
+
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await apiClient.login(email, password)
+      setUser(response.user)
+      // Save user to localStorage for persistence
+      localStorage.setItem("user", JSON.stringify(response.user))
+    } catch (error: any) {
+      // If API is unavailable and it's demo credentials, allow demo login
+      if (error.message === "API_UNAVAILABLE" && email === "demo@geosentinel.com") {
+        const demoUser = {
+          id: "demo-user-1",
+          name: "Dr. Demo User",
+          email: "demo@geosentinel.com",
+          organization: "ISRO - Demo",
+          role: "Senior Scientist",
+          phone: "+91-9876543210",
+        }
+        setUser(demoUser)
+        localStorage.setItem("user", JSON.stringify(demoUser))
+        localStorage.setItem("auth-token", "demo-token-123")
+        return
+      }
+      throw error
+    }
+  }
+
+  const register = async (userData: any) => {
+    try {
+      const response = await apiClient.register(userData)
+      setUser(response.user)
+      // Save user to localStorage for persistence
+      localStorage.setItem("user", JSON.stringify(response.user))
+    } catch (error: any) {
+      // If API is unavailable, still allow registration for demo purposes
+      if (error.message === "API_UNAVAILABLE") {
+        const demoUser = {
+          id: `demo-user-${Date.now()}`,
+          name: userData.name,
+          email: userData.email,
+          organization: userData.organization,
+          role: "User",
+          phone: userData.phone,
+        }
+        setUser(demoUser)
+        localStorage.setItem("user", JSON.stringify(demoUser))
+        localStorage.setItem("auth-token", `demo-token-${Date.now()}`)
+        return
+      }
+      throw error
+    }
+  }
+
+  const logout = () => {
+    apiClient.logout()
+    setUser(null)
+    localStorage.removeItem("user")
+  }
+
+  const value = {
+    user,
+    isLoading,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
+}
