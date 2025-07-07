@@ -45,13 +45,15 @@ export default function GeoSentinelDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null)
   const [dataLoading, setDataLoading] = useState(false)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Load dashboard data
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isAuthenticated && !isLoading && !isInitialized) {
+      setIsInitialized(true)
       loadDashboardData()
     }
-  }, [isAuthenticated, isLoading])
+  }, [isAuthenticated, isLoading, isInitialized])
 
   const loadDashboardData = async () => {
     setDataLoading(true)
@@ -164,13 +166,16 @@ export default function GeoSentinelDashboard() {
     logout()
   }
 
-  // Show loading spinner while checking authentication
-  if (isLoading) {
+  // Show loading spinner while checking authentication or initializing
+  if (isLoading || (isAuthenticated && !isInitialized)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
           <div className="text-white text-xl">Loading GeoSentinel...</div>
+          <div className="text-slate-400 text-sm">
+            {isLoading ? "Checking authentication..." : "Initializing dashboard..."}
+          </div>
         </div>
       </div>
     )

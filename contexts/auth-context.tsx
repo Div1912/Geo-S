@@ -30,21 +30,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already logged in
-    const token = apiClient.getToken()
-    if (token) {
-      // Try to get user info from localStorage or verify token
-      const savedUser = localStorage.getItem("user")
-      if (savedUser) {
-        try {
-          setUser(JSON.parse(savedUser))
-        } catch (error) {
-          console.error("Error parsing saved user:", error)
-          apiClient.clearToken()
+    const initializeAuth = async () => {
+      try {
+        const token = localStorage.getItem("auth-token")
+        const savedUser = localStorage.getItem("user")
+
+        if (token && savedUser) {
+          try {
+            const userData = JSON.parse(savedUser)
+            apiClient.setToken(token)
+            setUser(userData)
+          } catch (error) {
+            console.error("Error parsing saved user:", error)
+            localStorage.removeItem("auth-token")
+            localStorage.removeItem("user")
+          }
         }
+      } catch (error) {
+        console.error("Auth initialization error:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    initializeAuth()
   }, [])
 
   const login = async (email: string, password: string) => {
@@ -103,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     apiClient.logout()
     setUser(null)
     localStorage.removeItem("user")
+    localStorage.removeItem("auth-token")
   }
 
   const value = {

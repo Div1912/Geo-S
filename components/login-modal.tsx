@@ -65,39 +65,18 @@ export function LoginModal() {
 
   // Demo login function
   const handleDemoLogin = async () => {
-    setLoginData({
-      email: "demo@geosentinel.com",
-      password: "demo123",
-    })
     setIsLoading(true)
     setError("")
-    setSuccess("Using demo credentials...")
+    setSuccess("Logging in with demo credentials...")
 
-    // Simulate demo login
-    setTimeout(async () => {
-      try {
-        // For demo purposes, we'll simulate a successful login
-        const demoUser = {
-          id: "demo-user-1",
-          name: "Dr. Demo User",
-          email: "demo@geosentinel.com",
-          organization: "ISRO - Demo",
-          role: "Senior Scientist",
-          phone: "+91-9876543210",
-        }
-
-        // Store demo user data
-        localStorage.setItem("auth-token", "demo-token-123")
-        localStorage.setItem("user", JSON.stringify(demoUser))
-
-        // Trigger a page reload to update the auth state
-        window.location.reload()
-      } catch (err: any) {
-        setError("Demo login failed. Please try manual login.")
-      } finally {
-        setIsLoading(false)
-      }
-    }, 1500)
+    try {
+      // Use the actual login function for consistency
+      await login("demo@geosentinel.com", "demo123")
+    } catch (err: any) {
+      setError("Demo login failed. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

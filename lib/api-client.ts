@@ -7,6 +7,8 @@ class ApiClient {
     if (typeof window !== "undefined") {
       // Client-side: use current origin
       this.baseUrl = window.location.origin
+      // Initialize token from localStorage if available
+      this.token = localStorage.getItem("auth-token")
     } else {
       // Server-side: use environment variable or default
       this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
