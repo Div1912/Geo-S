@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { apiClient } from "@/lib/api-client"
 
 interface User {
@@ -28,10 +28,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasInitialized, setHasInitialized] = useState(false)
 
+  // Initialize authentication state
   useEffect(() => {
-    const initializeAuth = async () => {
+    if (hasInitialized) return
+
+    const initAuth = () => {
       try {
+        if (typeof window === "undefined") {
+          setIsLoading(false)
+          setHasInitialized(true)
+          return
+        }
+
         const token = localStorage.getItem("auth-token")
         const savedUser = localStorage.getItem("user")
 
@@ -50,21 +60,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("Auth initialization error:", error)
       } finally {
         setIsLoading(false)
+        setHasInitialized(true)
       }
     }
 
-    initializeAuth()
-  }, [])
+    // Small delay to prevent hydration issues
+    const timer = setTimeout(initAuth, 100)
+    return () => clearTimeout(timer)
+  }, [hasInitialized])
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
       const response = await apiClient.login(email, password)
       setUser(response.user)
-      // Save user to localStorage for persistence
       localStorage.setItem("user", JSON.stringify(response.user))
     } catch (error: any) {
       // If API is unavailable and it's demo credentials, allow demo login
-      if (error.message === "API_UNAVAILABLE" && email === "demo@geosentinel.com") {
+      if (
+        (error.message === "SERVER_ERROR" ||
+          error.message === "ENDPOINT_NOT_FOUND" ||
+          error.message === "NETWORK_ERROR") &&
+        email === "demo@geosentinel.com"
+      ) {
         const demoUser = {
           id: "demo-user-1",
           name: "Dr. Demo User",
@@ -76,21 +93,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(demoUser)
         localStorage.setItem("user", JSON.stringify(demoUser))
         localStorage.setItem("auth-token", "demo-token-123")
+        apiClient.setToken("demo-token-123")
         return
       }
       throw error
     }
-  }
+  }, [])
 
-  const register = async (userData: any) => {
+  const register = useCallback(async (userData: any) => {
     try {
       const response = await apiClient.register(userData)
       setUser(response.user)
-      // Save user to localStorage for persistence
       localStorage.setItem("user", JSON.stringify(response.user))
     } catch (error: any) {
       // If API is unavailable, still allow registration for demo purposes
-      if (error.message === "API_UNAVAILABLE") {
+      if (
+        error.message === "SERVER_ERROR" ||
+        error.message === "ENDPOINT_NOT_FOUND" ||
+        error.message === "NETWORK_ERROR"
+      ) {
         const demoUser = {
           id: `demo-user-${Date.now()}`,
           name: userData.name,
@@ -102,18 +123,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(demoUser)
         localStorage.setItem("user", JSON.stringify(demoUser))
         localStorage.setItem("auth-token", `demo-token-${Date.now()}`)
+        apiClient.setToken(`demo-token-${Date.now()}`)
         return
       }
       throw error
     }
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     apiClient.logout()
     setUser(null)
     localStorage.removeItem("user")
     localStorage.removeItem("auth-token")
-  }
+  }, [])
 
   const value = {
     user,

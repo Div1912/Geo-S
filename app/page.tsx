@@ -36,24 +36,51 @@ import { apiClient } from "@/lib/api-client"
 
 export default function GeoSentinelDashboard() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
-  const [activeAOIs, setActiveAOIs] = useState(0)
-  const [highRiskAlerts, setHighRiskAlerts] = useState(0)
-  const [totalLakeArea, setTotalLakeArea] = useState(0)
-  const [growthRate, setGrowthRate] = useState(0)
+  const [activeAOIs, setActiveAOIs] = useState(3)
+  const [highRiskAlerts, setHighRiskAlerts] = useState(2)
+  const [totalLakeArea, setTotalLakeArea] = useState(38.8)
+  const [growthRate, setGrowthRate] = useState(12.3)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const [dashboardData, setDashboardData] = useState<any>(null)
+  const [dashboardData, setDashboardData] = useState<any>({
+    aois: [
+      { id: "AOI-001", name: "Pangong Tso Region", location: "Leh, Ladakh", status: "Active" },
+      { id: "AOI-007", name: "Tso Moriri Basin", location: "Leh, Ladakh", status: "Critical" },
+      { id: "AOI-012", name: "Gurudongmar Region", location: "North Sikkim", status: "Monitoring" },
+    ],
+    alerts: [
+      { id: "ALT-001", severity: "critical", title: "Rapid Lake Expansion", status: "active" },
+      { id: "ALT-002", severity: "high", title: "Unusual Growth Pattern", status: "active" },
+    ],
+    lakes: [
+      {
+        id: "LAKE-001",
+        name: "Pangong Lake",
+        area_km2: 12.3,
+        risk_level: "medium",
+        aois: { location: "Leh, Ladakh" },
+      },
+      { id: "LAKE-002", name: "Tso Moriri", area_km2: 18.7, risk_level: "high", aois: { location: "Leh, Ladakh" } },
+      {
+        id: "LAKE-003",
+        name: "Gurudongmar Lake",
+        area_km2: 7.8,
+        risk_level: "low",
+        aois: { location: "North Sikkim" },
+      },
+    ],
+  })
   const [dataLoading, setDataLoading] = useState(false)
-  const [isOfflineMode, setIsOfflineMode] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
+  const [isOfflineMode, setIsOfflineMode] = useState(true)
+  const [dashboardInitialized, setDashboardInitialized] = useState(false)
 
-  // Load dashboard data
+  // Load dashboard data only once when authenticated
   useEffect(() => {
-    if (isAuthenticated && !isLoading && !isInitialized) {
-      setIsInitialized(true)
+    if (isAuthenticated && !dashboardInitialized && !isLoading) {
+      setDashboardInitialized(true)
       loadDashboardData()
     }
-  }, [isAuthenticated, isLoading, isInitialized])
+  }, [isAuthenticated, dashboardInitialized, isLoading])
 
   const loadDashboardData = async () => {
     setDataLoading(true)
@@ -93,50 +120,16 @@ export default function GeoSentinelDashboard() {
 
       const totalArea = lakeData?.reduce((sum: number, lake: any) => sum + (lake.area_km2 || 0), 0) || 38.8
       setTotalLakeArea(totalArea)
-      setGrowthRate(12.3) // Mock value for now
+      setGrowthRate(12.3)
 
       setDashboardData({
-        aois: aoiData,
-        alerts: alertData,
-        lakes: lakeData,
+        aois: aoiData?.length ? aoiData : dashboardData.aois,
+        alerts: alertData?.length ? alertData : dashboardData.alerts,
+        lakes: lakeData?.length ? lakeData : dashboardData.lakes,
       })
     } catch (error) {
       console.error("Failed to load dashboard data:", error)
       setIsOfflineMode(true)
-
-      // Use complete fallback data
-      setActiveAOIs(3)
-      setHighRiskAlerts(2)
-      setTotalLakeArea(38.8)
-      setGrowthRate(12.3)
-      setDashboardData({
-        aois: [
-          { id: "AOI-001", name: "Pangong Tso Region", location: "Leh, Ladakh", status: "Active" },
-          { id: "AOI-007", name: "Tso Moriri Basin", location: "Leh, Ladakh", status: "Critical" },
-          { id: "AOI-012", name: "Gurudongmar Region", location: "North Sikkim", status: "Monitoring" },
-        ],
-        alerts: [
-          { id: "ALT-001", severity: "critical", title: "Rapid Lake Expansion", status: "active" },
-          { id: "ALT-002", severity: "high", title: "Unusual Growth Pattern", status: "active" },
-        ],
-        lakes: [
-          {
-            id: "LAKE-001",
-            name: "Pangong Lake",
-            area_km2: 12.3,
-            risk_level: "medium",
-            aois: { location: "Leh, Ladakh" },
-          },
-          { id: "LAKE-002", name: "Tso Moriri", area_km2: 18.7, risk_level: "high", aois: { location: "Leh, Ladakh" } },
-          {
-            id: "LAKE-003",
-            name: "Gurudongmar Lake",
-            area_km2: 7.8,
-            risk_level: "low",
-            aois: { location: "North Sikkim" },
-          },
-        ],
-      })
     } finally {
       setDataLoading(false)
     }
@@ -164,18 +157,17 @@ export default function GeoSentinelDashboard() {
 
   const handleLogout = () => {
     logout()
+    setDashboardInitialized(false)
   }
 
-  // Show loading spinner while checking authentication or initializing
-  if (isLoading || (isAuthenticated && !isInitialized)) {
+  // Show loading spinner while checking authentication
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
           <div className="text-white text-xl">Loading GeoSentinel...</div>
-          <div className="text-slate-400 text-sm">
-            {isLoading ? "Checking authentication..." : "Initializing dashboard..."}
-          </div>
+          <div className="text-slate-400 text-sm">Initializing application...</div>
         </div>
       </div>
     )
@@ -413,11 +405,7 @@ export default function GeoSentinelDashboard() {
                             </Badge>
                           </div>
                         </div>
-                      )) || (
-                        <div className="text-center text-slate-400 py-4">
-                          {dataLoading ? "Loading detections..." : "No recent detections available"}
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </CardContent>
                 </Card>

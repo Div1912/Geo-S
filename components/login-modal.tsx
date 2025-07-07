@@ -37,8 +37,7 @@ export function LoginModal() {
 
     try {
       await login(loginData.email, loginData.password)
-      setSuccess("Login successful! Redirecting...")
-      // The useAuth hook will handle the state change and redirect
+      setSuccess("Login successful!")
     } catch (err: any) {
       setError(err.message || "Login failed. Please check your credentials.")
     } finally {
@@ -55,7 +54,6 @@ export function LoginModal() {
     try {
       await register(signupData)
       setSuccess("Account created successfully! Welcome to GeoSentinel!")
-      // The useAuth hook will handle the state change and redirect
     } catch (err: any) {
       setError(err.message || "Registration failed. Please try again.")
     } finally {
@@ -63,14 +61,12 @@ export function LoginModal() {
     }
   }
 
-  // Demo login function
   const handleDemoLogin = async () => {
     setIsLoading(true)
     setError("")
     setSuccess("Logging in with demo credentials...")
 
     try {
-      // Use the actual login function for consistency
       await login("demo@geosentinel.com", "demo123")
     } catch (err: any) {
       setError("Demo login failed. Please try again.")
