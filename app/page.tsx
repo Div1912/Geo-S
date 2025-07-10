@@ -19,132 +19,32 @@ import {
   Zap,
   BarChart3,
   User,
-  Loader2,
-  Wifi,
-  WifiOff,
 } from "lucide-react"
 import { MapInterface } from "@/components/map-interface"
 import { AlertsPanel } from "@/components/alerts-panel"
 import { AnalyticsCharts } from "@/components/analytics-charts"
 import { AOIManager } from "@/components/aoi-manager"
 import { ReportsPanel } from "@/components/reports-panel"
-import { LoginModal } from "@/components/login-modal"
 import { NotificationCenter } from "@/components/notification-center"
 import { UserProfile } from "@/components/user-profile"
-import { useAuth } from "@/contexts/auth-context"
-import { apiClient } from "@/lib/api-client"
 
 export default function GeoSentinelDashboard() {
-  const { user, isAuthenticated, isLoading, isInitialized, logout } = useAuth()
-  const [activeAOIs, setActiveAOIs] = useState(0)
-  const [highRiskAlerts, setHighRiskAlerts] = useState(0)
-  const [totalLakeArea, setTotalLakeArea] = useState(0)
-  const [growthRate, setGrowthRate] = useState(0)
+  const [activeAOIs, setActiveAOIs] = useState(3)
+  const [highRiskAlerts, setHighRiskAlerts] = useState(2)
+  const [totalLakeArea, setTotalLakeArea] = useState(38.8)
+  const [growthRate, setGrowthRate] = useState(12.3)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const [dashboardData, setDashboardData] = useState<any>(null)
-  const [dataLoading, setDataLoading] = useState(false)
-  const [isOfflineMode, setIsOfflineMode] = useState(false)
 
-  // Load dashboard data only when authenticated and initialized
+  // Simulate real-time updates
   useEffect(() => {
-    if (isAuthenticated && isInitialized && !dataLoading && !dashboardData) {
-      loadDashboardData()
-    }
-  }, [isAuthenticated, isInitialized])
-
-  const loadDashboardData = async () => {
-    setDataLoading(true)
-    setIsOfflineMode(false)
-
-    try {
-      const [aois, alerts, lakes] = await Promise.allSettled([
-        apiClient.getAOIs(),
-        apiClient.getAlerts(),
-        apiClient.getGlacialLakes(),
-      ])
-
-      const hasServerErrors = [aois, alerts, lakes].some(
-        (result) =>
-          result.status === "rejected" &&
-          (result.reason?.message === "SERVER_ERROR" ||
-            result.reason?.message === "ENDPOINT_NOT_FOUND" ||
-            result.reason?.message === "NETWORK_ERROR"),
-      )
-
-      if (hasServerErrors) {
-        setIsOfflineMode(true)
-      }
-
-      const aoiData = aois.status === "fulfilled" ? aois.value : []
-      const alertData = alerts.status === "fulfilled" ? alerts.value : []
-      const lakeData = lakes.status === "fulfilled" ? lakes.value : []
-
-      setActiveAOIs(aoiData?.length || 3)
-      setHighRiskAlerts(
-        alertData?.filter((alert: any) => alert.severity === "high" || alert.severity === "critical").length || 2,
-      )
-
-      const totalArea = lakeData?.reduce((sum: number, lake: any) => sum + (lake.area_km2 || 0), 0) || 38.8
-      setTotalLakeArea(totalArea)
-      setGrowthRate(12.3)
-
-      setDashboardData({
-        aois: aoiData,
-        alerts: alertData,
-        lakes: lakeData,
-      })
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error)
-      setIsOfflineMode(true)
-
-      setActiveAOIs(3)
-      setHighRiskAlerts(2)
-      setTotalLakeArea(38.8)
-      setGrowthRate(12.3)
-      setDashboardData({
-        aois: [
-          { id: "AOI-001", name: "Pangong Tso Region", location: "Leh, Ladakh", status: "Active" },
-          { id: "AOI-007", name: "Tso Moriri Basin", location: "Leh, Ladakh", status: "Critical" },
-          { id: "AOI-012", name: "Gurudongmar Region", location: "North Sikkim", status: "Monitoring" },
-        ],
-        alerts: [
-          { id: "ALT-001", severity: "critical", title: "Rapid Lake Expansion", status: "active" },
-          { id: "ALT-002", severity: "high", title: "Unusual Growth Pattern", status: "active" },
-        ],
-        lakes: [
-          {
-            id: "LAKE-001",
-            name: "Pangong Lake",
-            area_km2: 12.3,
-            risk_level: "medium",
-            aois: { location: "Leh, Ladakh" },
-          },
-          { id: "LAKE-002", name: "Tso Moriri", area_km2: 18.7, risk_level: "high", aois: { location: "Leh, Ladakh" } },
-          {
-            id: "LAKE-003",
-            name: "Gurudongmar Lake",
-            area_km2: 7.8,
-            risk_level: "low",
-            aois: { location: "North Sikkim" },
-          },
-        ],
-      })
-    } finally {
-      setDataLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-
     const interval = setInterval(() => {
       setTotalLakeArea((prev) => prev + (Math.random() - 0.5) * 0.1)
       setGrowthRate((prev) => Math.max(0, prev + (Math.random() - 0.5) * 0.5))
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [isAuthenticated])
+  }, [])
 
   const handleAlertClick = () => {
     setShowNotifications(true)
@@ -152,28 +52,6 @@ export default function GeoSentinelDashboard() {
 
   const handleProfileClick = () => {
     setShowProfile(true)
-  }
-
-  const handleLogout = () => {
-    logout()
-  }
-
-  // Show loading spinner while checking authentication
-  if (!isInitialized || isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-          <div className="text-white text-xl">Loading GeoSentinel...</div>
-          <div className="text-slate-400 text-sm">Initializing application...</div>
-        </div>
-      </div>
-    )
-  }
-
-  // Show login modal if not authenticated
-  if (!isAuthenticated) {
-    return <LoginModal />
   }
 
   return (
@@ -192,12 +70,9 @@ export default function GeoSentinelDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge
-                variant="outline"
-                className={isOfflineMode ? "text-orange-400 border-orange-400" : "text-green-400 border-green-400"}
-              >
-                {isOfflineMode ? <WifiOff className="w-3 h-3 mr-1" /> : <Wifi className="w-3 h-3 mr-1" />}
-                {isOfflineMode ? "Demo Mode" : "Live Monitoring"}
+              <Badge variant="outline" className="text-green-400 border-green-400">
+                <Activity className="w-3 h-3 mr-1" />
+                Live Monitoring
               </Badge>
               <Button variant="outline" size="sm" onClick={handleAlertClick}>
                 <Bell className="w-4 h-4 mr-2" />
@@ -205,10 +80,7 @@ export default function GeoSentinelDashboard() {
               </Button>
               <Button variant="outline" size="sm" onClick={handleProfileClick}>
                 <User className="w-4 h-4 mr-2" />
-                {user?.name || "Profile"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                Logout
+                Dr. Rajesh Kumar
               </Button>
             </div>
           </div>
@@ -219,31 +91,11 @@ export default function GeoSentinelDashboard() {
       <main className="container mx-auto px-4 py-6">
         {/* Welcome Message */}
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-white">Welcome back, {user?.name || "User"}! 👋</h2>
+          <h2 className="text-xl font-semibold text-white">Welcome back, Dr. Kumar! 👋</h2>
           <p className="text-slate-400">
-            {user?.organization && `${user.organization} • `}
-            {dataLoading
-              ? "Loading dashboard data..."
-              : isOfflineMode
-                ? "Running in demo mode with sample data"
-                : "Your glacial monitoring dashboard is ready."}
+            ISRO - Space Applications Centre • Your glacial monitoring dashboard is ready.
           </p>
         </div>
-
-        {/* Offline Mode Alert */}
-        {isOfflineMode && (
-          <Alert className="mb-6 border-orange-500 bg-orange-500/10">
-            <WifiOff className="h-4 w-4 text-orange-400" />
-            <AlertTitle className="text-orange-400">Demo Mode Active</AlertTitle>
-            <AlertDescription className="text-slate-300">
-              API services are currently unavailable. The dashboard is running with sample data for demonstration
-              purposes.
-              <Button variant="link" className="p-0 h-auto text-orange-400 ml-2" onClick={loadDashboardData}>
-                Retry Connection →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -253,9 +105,7 @@ export default function GeoSentinelDashboard() {
               <MapPin className="h-4 w-4 text-blue-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {dataLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : activeAOIs}
-              </div>
+              <div className="text-2xl font-bold text-white">{activeAOIs}</div>
               <p className="text-xs text-slate-400">Across multiple regions</p>
             </CardContent>
           </Card>
@@ -266,9 +116,7 @@ export default function GeoSentinelDashboard() {
               <AlertTriangle className="h-4 w-4 text-red-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-400">
-                {dataLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : highRiskAlerts}
-              </div>
+              <div className="text-2xl font-bold text-red-400">{highRiskAlerts}</div>
               <p className="text-xs text-slate-400">Requires immediate attention</p>
             </CardContent>
           </Card>
@@ -279,9 +127,7 @@ export default function GeoSentinelDashboard() {
               <Globe className="h-4 w-4 text-cyan-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {dataLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : `${totalLakeArea.toFixed(1)} km²`}
-              </div>
+              <div className="text-2xl font-bold text-white">{totalLakeArea.toFixed(1)} km²</div>
               <p className="text-xs text-slate-400">Monitored glacial lakes</p>
             </CardContent>
           </Card>
@@ -292,9 +138,7 @@ export default function GeoSentinelDashboard() {
               <TrendingUp className="h-4 w-4 text-green-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-400">
-                {dataLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : `+${growthRate.toFixed(1)}%`}
-              </div>
+              <div className="text-2xl font-bold text-green-400">+{growthRate.toFixed(1)}%</div>
               <p className="text-xs text-slate-400">Last 30 days</p>
             </CardContent>
           </Card>
@@ -384,30 +228,24 @@ export default function GeoSentinelDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {dashboardData?.lakes?.slice(0, 3).map((lake: any, index: number) => (
-                        <div
-                          key={lake.id || index}
-                          className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg"
-                        >
+                      {[
+                        { name: "Pangong Lake", location: "Leh, Ladakh", area: "12.3", risk: "Medium" },
+                        { name: "Tso Moriri", location: "Leh, Ladakh", area: "18.7", risk: "High" },
+                        { name: "Gurudongmar Lake", location: "North Sikkim", area: "7.8", risk: "Low" },
+                      ].map((lake, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
                           <div>
-                            <p className="text-white font-medium">{lake.name || `Lake ${index + 1}`}</p>
-                            <p className="text-sm text-slate-400">{lake.aois?.location || "Unknown Location"}</p>
+                            <p className="text-white font-medium">{lake.name}</p>
+                            <p className="text-sm text-slate-400">{lake.location}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-green-400 font-medium">{lake.area_km2?.toFixed(1) || "0.0"} km²</p>
-                            <Badge
-                              variant={lake.risk_level === "high" ? "destructive" : "secondary"}
-                              className="text-xs"
-                            >
-                              {lake.risk_level || "Low"}
+                            <p className="text-green-400 font-medium">{lake.area} km²</p>
+                            <Badge variant={lake.risk === "High" ? "destructive" : "secondary"} className="text-xs">
+                              {lake.risk}
                             </Badge>
                           </div>
                         </div>
-                      )) || (
-                        <div className="text-center text-slate-400 py-4">
-                          {dataLoading ? "Loading detections..." : "No recent detections available"}
-                        </div>
-                      )}
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
