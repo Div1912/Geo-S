@@ -3,14 +3,10 @@ class ApiClient {
   private token: string | null = null
 
   constructor() {
-    // Handle different environments properly
     if (typeof window !== "undefined") {
-      // Client-side: use current origin
       this.baseUrl = window.location.origin
-      // Initialize token from localStorage if available
       this.token = localStorage.getItem("auth-token")
     } else {
-      // Server-side: use environment variable or default
       this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
     }
   }
@@ -55,7 +51,6 @@ class ApiClient {
     try {
       const response = await fetch(url, config)
 
-      // Handle different HTTP status codes
       if (response.status === 401) {
         this.clearToken()
         throw new Error("Authentication required")
@@ -78,13 +73,11 @@ class ApiClient {
 
       return await response.json()
     } catch (error) {
-      // Handle fetch errors (network issues, CORS, etc.)
       if (error instanceof TypeError && error.message.includes("fetch")) {
         console.warn("Network error, using mock data")
         throw new Error("NETWORK_ERROR")
       }
 
-      // Re-throw our custom errors
       if (
         error instanceof Error &&
         (error.message === "SERVER_ERROR" ||
@@ -96,11 +89,10 @@ class ApiClient {
       }
 
       console.error("API request error:", error)
-      throw new Error("API_ERROR")
+      throw new Error("API_UNAVAILABLE")
     }
   }
 
-  // Auth methods with better error handling
   async login(email: string, password: string) {
     try {
       const response = await this.request("/auth/login", {
@@ -114,14 +106,7 @@ class ApiClient {
 
       return response
     } catch (error: any) {
-      // For demo purposes, allow demo login even if API fails
-      if (
-        (error.message === "SERVER_ERROR" ||
-          error.message === "ENDPOINT_NOT_FOUND" ||
-          error.message === "NETWORK_ERROR") &&
-        email === "demo@geosentinel.com" &&
-        password === "demo123"
-      ) {
+      if (error.message === "API_UNAVAILABLE" && email === "demo@geosentinel.com" && password === "demo123") {
         const demoResponse = {
           user: {
             id: "demo-user-1",
@@ -153,12 +138,7 @@ class ApiClient {
 
       return response
     } catch (error: any) {
-      // For demo purposes, allow registration even if API fails
-      if (
-        error.message === "SERVER_ERROR" ||
-        error.message === "ENDPOINT_NOT_FOUND" ||
-        error.message === "NETWORK_ERROR"
-      ) {
+      if (error.message === "API_UNAVAILABLE") {
         const demoResponse = {
           user: {
             id: `demo-user-${Date.now()}`,
@@ -181,7 +161,6 @@ class ApiClient {
     this.clearToken()
   }
 
-  // AOI methods with fallback
   async getAOIs() {
     try {
       return await this.request("/aois")
@@ -191,7 +170,6 @@ class ApiClient {
         error.message === "ENDPOINT_NOT_FOUND" ||
         error.message === "NETWORK_ERROR"
       ) {
-        // Return mock data
         return [
           {
             id: "AOI-001",
@@ -246,7 +224,6 @@ class ApiClient {
       })
     } catch (error: any) {
       if (error.message === "SERVER_ERROR" || error.message === "ENDPOINT_NOT_FOUND") {
-        // Return mock success response
         return {
           id: `AOI-${Date.now()}`,
           ...aoiData,
@@ -285,7 +262,6 @@ class ApiClient {
     }
   }
 
-  // Alert methods with fallback
   async getAlerts(filters?: { status?: string; type?: string }) {
     try {
       const params = new URLSearchParams()
@@ -344,7 +320,6 @@ class ApiClient {
     }
   }
 
-  // Report methods with fallback
   async getReports() {
     try {
       return await this.request("/reports")
@@ -400,7 +375,6 @@ class ApiClient {
     }
   }
 
-  // Glacial Lake methods with fallback
   async getGlacialLakes(aoiId?: string) {
     try {
       const params = aoiId ? `?aoi_id=${aoiId}` : ""
